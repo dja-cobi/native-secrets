@@ -1,4 +1,5 @@
 #if ANDROID
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Android.App;
@@ -16,7 +17,6 @@ internal sealed class AndroidKeychain : IKeychainStore
     private const string PrefsName = "nativesecrets_vault";
     private const string AndroidKeyStore = "AndroidKeyStore";
     private const int GcmTagLengthBits = 128;
-    private const int GcmTagLengthBytes = 16;
 
     private static ISharedPreferences GetPrefs(Context ctx)
         => ctx.GetSharedPreferences(PrefsName, FileCreationMode.Private)!;
@@ -41,6 +41,7 @@ internal sealed class AndroidKeychain : IKeychainStore
         var builder = new KeyGenParameterSpec.Builder(
                 KeyAlias,
                 KeyStorePurpose.Encrypt | KeyStorePurpose.Decrypt)!
+            .SetKeySize(256)!
             .SetBlockModes(KeyProperties.BlockModeGcm!)!
             .SetEncryptionPaddings(KeyProperties.EncryptionPaddingNone!)!
             .SetRandomizedEncryptionRequired(true)!;
@@ -49,7 +50,7 @@ internal sealed class AndroidKeychain : IKeychainStore
         return generator.GenerateKey()!;
     }
 
-    public bool IsAvailable()
+       public bool IsAvailable()
     {
         try
         {
@@ -59,9 +60,17 @@ internal sealed class AndroidKeychain : IKeychainStore
             var ctx = Application.Context;
             if (ctx == null) return false;
 
-            _ = GetPrefs(ctx);
-            _ = GetKeyStore();
-            return true;
+            // Полный сквозной тест (шифрование -> SharedPreferences -> расшифровка -> удаление)
+            const string probePkg = "__nativesecrets_probe__";
+            const string probeSvc = "__probe__";
+            const string probeUsr = "__probe__";
+            const string probeVal = "probe_ok";
+
+            SetPassword(probePkg, probeSvc, probeUsr, probeVal);
+            var roundtrip = GetPassword(probePkg, probeSvc, probeUsr);
+            DeletePassword(probePkg, probeSvc, probeUsr);
+
+            return roundtrip == probeVal;
         }
         catch
         {
@@ -76,7 +85,7 @@ internal sealed class AndroidKeychain : IKeychainStore
     {
         var key = GetOrCreateKey();
         var cipher = Cipher.GetInstance("AES/GCM/NoPadding")!;
-        cipher.Init(CipherMode.EncryptMode, key);
+        cipher.Init(Javax.Crypto.CipherMode.EncryptMode, key);
 
         byte[] plain = Encoding.UTF8.GetBytes(password);
         try
@@ -84,15 +93,11 @@ internal sealed class AndroidKeychain : IKeychainStore
             byte[] cipherBytes = cipher.DoFinal(plain)!;
             byte[] iv = cipher.GetIV()!;
 
-            // Формат: [1 байт длина IV] + [IV] + [CipherText + GCM Tag]
-            byte[] combined = new byte[1 + iv.Length + cipherBytes.Length];
-            combined[0] = (byte)iv.Length;
-            Buffer.BlockCopy(iv, 0, combined, 1, iv.Length);
-            Buffer.BlockCopy(cipherBytes, 0, combined, 1 + iv.Length, cipherBytes.Length);
+            string payload = $"{Convert.ToBase64String(iv)}:{Convert.ToBase64String(cipherBytes)}";
 
             var prefs = GetPrefs(Application.Context);
             using var editor = prefs.Edit()!;
-            editor.PutString(MakeKey(package, service, user), Convert.ToBase64String(combined))!;
+            editor.PutString(MakeKey(package, service, user), payload);
             editor.Apply();
         }
         finally
@@ -107,21 +112,16 @@ internal sealed class AndroidKeychain : IKeychainStore
         string? stored = prefs.GetString(MakeKey(package, service, user), null);
         if (string.IsNullOrEmpty(stored)) return null;
 
-        byte[] combined = Convert.FromBase64String(stored);
-        if (combined.Length < 2) return null;
+        var parts = stored.Split(':');
+        if (parts.Length != 2) return null;
 
-        int ivLen = combined[0];
-        if (combined.Length < 1 + ivLen + GcmTagLengthBytes)
-            return null;
-
-        byte[] iv = new byte[ivLen];
-        byte[] cipherBytes = new byte[combined.Length - 1 - ivLen];
-        Buffer.BlockCopy(combined, 1, iv, 0, ivLen);
-        Buffer.BlockCopy(combined, 1 + ivLen, cipherBytes, 0, cipherBytes.Length);
+        byte[] iv = Convert.FromBase64String(parts.First());
+        byte[] cipherBytes = Convert.FromBase64String(parts.Last());
 
         var key = GetOrCreateKey();
         var cipher = Cipher.GetInstance("AES/GCM/NoPadding")!;
-        cipher.Init(CipherMode.DecryptMode, key, new GCMParameterSpec(GcmTagLengthBits, iv));
+        using var spec = new GCMParameterSpec(GcmTagLengthBits, iv, 0, iv.Length);
+        cipher.Init(Javax.Crypto.CipherMode.DecryptMode, key, spec);
 
         byte[] plain = cipher.DoFinal(cipherBytes)!;
         try
@@ -141,7 +141,7 @@ internal sealed class AndroidKeychain : IKeychainStore
         if (!prefs.Contains(key)) return false;
 
         using var editor = prefs.Edit()!;
-        editor.Remove(key)!;
+        editor.Remove(key);
         editor.Apply();
         return true;
     }
