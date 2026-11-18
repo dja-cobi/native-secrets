@@ -1,4 +1,4 @@
-name: iOS & MacCatalyst Test (SecKeyChain)
+name: Cross-Platform CI (Linux, Windows, macOS, iOS)
 
 on:
   push:
@@ -8,21 +8,60 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-ios-and-maccatalyst:
-    name: Test on MacCatalyst & iOS Simulator
-    runs-on: macos-latest
-
+  test-linux:
+    name: Linux (libsecret + NativeAOT)
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install libsecret & gnome-keyring
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-0 gnome-keyring dbus-x11
+      - name: Run JIT & NativeAOT inside D-Bus session
+        run: |
+          dbus-run-session -- bash -c '
+            echo -n "testpass" | gnome-keyring-daemon --unlock --components=secrets
+            dotnet run --project src/NativeSecrets.Demo -c Release
+            dotnet publish src/NativeSecrets.Demo -c Release -r linux-x64 -p:PublishAot=true -o ./aot-out
+            ./aot-out/NativeSecrets.Demo
+          '
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+  test-windows:
+    name: Windows (Credential Manager + NativeAOT)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Run JIT
+        run: dotnet run --project src/NativeSecrets.Demo -c Release
+      - name: Publish & Run NativeAOT
+        run: |
+          dotnet publish src/NativeSecrets.Demo -c Release -r win-x64 -p:PublishAot=true -o ./aot-out
+          ./aot-out/NativeSecrets.Demo.exe
+
+  test-apple:
+    name: Apple (macOS, MacCatalyst & iOS Simulator)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
       - name: Install Apple workloads (iOS & MacCatalyst)
         run: dotnet workload install ios maccatalyst
+
+      - name: Run macOS Demo (JIT & NativeAOT)
+        run: |
+          dotnet run --project src/NativeSecrets.Demo -c Release
+          dotnet publish src/NativeSecrets.Demo -c Release -r osx-arm64 -p:PublishAot=true -p:StripSymbols=true -o ./aot-out
+          chmod +x ./aot-out/NativeSecrets.Demo
+          ./aot-out/NativeSecrets.Demo
 
       - name: Create Entitlements.plist for Keychain access
         run: |
