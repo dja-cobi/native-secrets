@@ -1,16 +1,13 @@
 ﻿using NativeSecrets;
 
-var secrets = NativeSecretsBase.Create();
+var store = KeychainFactory.Instance;
+bool fallback = KeychainFactory.IsUsingFallback;
 
-// Синхронно
-secrets.SetSecret("MyApp", "api_user", "super_secret_token");
-var token = secrets.GetSecret("MyApp", "api_user");
-Console.WriteLine(token);
-
-secrets.DeleteSecret("MyApp", "api_user");
-var tokenDel = secrets.GetSecret("MyApp", "api_user");
-Console.WriteLine(tokenDel);
-
-
-
-Console.ReadKey();
+if (store.IsAvailable())
+{
+    store.SetPassword("MyApp", "ApiToken", "user@example.com", "super-secret");
+    string? pwd = store.GetPassword("MyApp", "ApiToken", "user@example.com");
+    Console.WriteLine(pwd);
+    bool removed = store.DeletePassword("MyApp", "ApiToken", "user@example.com");
+    Console.WriteLine(removed);
+}
