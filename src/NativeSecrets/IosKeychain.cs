@@ -67,19 +67,36 @@ internal sealed class IosKeychain : IKeychainStore
             Account = user
         };
 
-        var match = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
-        if (code == SecStatusCode.ItemNotFound) return null;
-        if (code != SecStatusCode.Success || match == null) return null;
+        using var match = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
+        if (code != SecStatusCode.Success || match?.ValueData == null)
+            return null;
 
-        try
-        {
-            return match.ValueData?.ToString();
-        }
-        finally
-        {
-            match.Dispose();
-        }
+        using var decoded = NSString.FromData(match.ValueData, NSStringEncoding.UTF8);
+        return decoded?.ToString();
     }
+
+
+    // public string? GetPassword(string package, string service, string user)
+    // {
+    //     using var query = new SecRecord(SecKind.GenericPassword)
+    //     {
+    //         Service = BuildService(package, service),
+    //         Account = user
+    //     };
+    //
+    //     var match = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
+    //     if (code == SecStatusCode.ItemNotFound) return null;
+    //     if (code != SecStatusCode.Success || match == null) return null;
+    //
+    //     try
+    //     {
+    //         return match.ValueData?.ToString();
+    //     }
+    //     finally
+    //     {
+    //         match.Dispose();
+    //     }
+    // }
 
     public bool DeletePassword(string package, string service, string user)
     {
