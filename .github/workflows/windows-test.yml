@@ -1,0 +1,33 @@
+name: Windows Test & NativeAOT
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test-windows:
+    name: Test on Windows (Credential Manager + NativeAOT)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build solution
+        run: dotnet build -c Release
+
+      - name: Run Demo (JIT)
+        run: dotnet run --project src/NativeSecrets.Demo -c Release
+
+      - name: Publish & Run NativeAOT binary
+        run: |
+          dotnet publish src/NativeSecrets.Demo -c Release -r win-x64 -p:PublishAot=true -o ./aot-out
+          ./aot-out/NativeSecrets.Demo.exe
