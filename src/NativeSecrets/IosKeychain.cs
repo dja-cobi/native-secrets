@@ -1,8 +1,8 @@
-#if IOS
+#if IOS || MACCATALYST
 using Foundation;
 using Security;
 
-namespace SecureVault;
+namespace NativeSecrets;
 
 internal sealed class IosKeychain : IKeychainStore
 {
