@@ -1,4 +1,4 @@
-#if IOS || MACCATALYST
+#if IOS || __IOS__ || MACCATALYST || __MACCATALYST__
 using Foundation;
 using Security;
 

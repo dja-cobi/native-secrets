@@ -18,9 +18,9 @@ public class KeychainFactory
 
     private static IKeychainStore GetPlatformStore()
     {
-#if IOS || MACCATALYST
+#if IOS || __IOS__ || MACCATALYST || __MACCATALYST__
         return new IosKeychain();
-#elif ANDROID
+#elif ANDROID || __ANDROID__
         return new AndroidKeychain();
 #else
         if (OperatingSystem.IsWindows())

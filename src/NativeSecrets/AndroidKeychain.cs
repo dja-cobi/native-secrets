@@ -1,4 +1,4 @@
-#if ANDROID
+#if ANDROID || __ANDROID__
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
