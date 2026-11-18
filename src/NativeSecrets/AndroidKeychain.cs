@@ -1,4 +1,3 @@
-#if ANDROID || __ANDROID__
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -146,4 +145,3 @@ internal sealed class AndroidKeychain : IKeychainStore
         return true;
     }
 }
-#endif
