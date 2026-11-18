@@ -1,3 +1,4 @@
+#if IOS || __IOS__ || MACCATALYST || __MACCATALYST__
 using Foundation;
 using Security;
 
@@ -108,3 +109,4 @@ internal sealed class IosKeychain : IKeychainStore
         return status == SecStatusCode.Success || status == SecStatusCode.ItemNotFound;
     }
 }
+#endif
