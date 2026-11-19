@@ -92,8 +92,10 @@ jobs:
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
 
-          xcrun simctl install "$UDID" "$APP_PATH"
-          xcrun simctl launch --console-pty "$UDID" com.companyname.NativeSecrets.IosDemo | tee ios_output.log
+                    xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl launch "$UDID" com.companyname.NativeSecrets.IosDemo
+          sleep 3
+          xcrun simctl spawn "$UDID" log show --last 2m --style compact | grep "NativeSecrets.IosDemo" | tee ios_output.log
           grep -q "SUCCESS: Apple SecKeyChain works properly!" ios_output.log
 
 
