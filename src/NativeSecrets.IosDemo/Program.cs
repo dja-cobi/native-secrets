@@ -1,4 +1,4 @@
-using NativeSecrets;
+using NativeSecrets.Core;
 
 try
 {
