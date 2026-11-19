@@ -8,6 +8,7 @@ public static class KeychainFactory
 {
     private static readonly Lazy<KeychainStoreProvider> InstanceHolder =
         new(() => CreateProvider(), LazyThreadSafetyMode.ExecutionAndPublication);
+    
 
     public static IKeychainStore Instance => InstanceHolder.Value;
     public static bool IsUsingFallback => InstanceHolder.Value.IsUsingFallback;
