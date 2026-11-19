@@ -12,14 +12,16 @@ internal sealed class IosKeychain : IKeychainStore
     {
         try
         {
-            using var query = new SecRecord(SecKind.GenericPassword)
-            {
-                Service = "__vault_probe__",
-                Account = "__probe__"
-            };
-            var match = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
-            match?.Dispose();
-            return code == SecStatusCode.Success || code == SecStatusCode.ItemNotFound;
+            const string probePkg = "__nativesecrets_probe__";
+            const string probeSvc = "__probe__";
+            const string probeUsr = "__probe__";
+            const string probeVal = "probe_ok";
+
+            SetPassword(probePkg, probeSvc, probeUsr, probeVal);
+            var roundtrip = GetPassword(probePkg, probeSvc, probeUsr);
+            DeletePassword(probePkg, probeSvc, probeUsr);
+
+            return roundtrip == probeVal;
         }
         catch
         {
@@ -36,12 +38,14 @@ internal sealed class IosKeychain : IKeychainStore
             Account = user
         };
 
-        var existing = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
+        using var passwordData = NSData.FromString(password, NSStringEncoding.UTF8)
+            ?? throw new InvalidOperationException("Failed to encode password as UTF-8.");
+
+        using var existing = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
         if (code == SecStatusCode.Success && existing != null)
         {
-            existing.ValueData = NSData.FromString(password);
+            existing.ValueData = passwordData;
             var status = SecKeyChain.Update(query, existing);
-            existing.Dispose();
             if (status != SecStatusCode.Success)
                 throw new InvalidOperationException($"SecItemUpdate failed: {status}");
             return;
@@ -51,7 +55,7 @@ internal sealed class IosKeychain : IKeychainStore
         {
             Service = svc,
             Account = user,
-            ValueData = NSData.FromString(password),
+            ValueData = passwordData,
             Accessible = SecAccessible.AfterFirstUnlock
         };
         var addStatus = SecKeyChain.Add(record);
@@ -74,29 +78,6 @@ internal sealed class IosKeychain : IKeychainStore
         using var decoded = NSString.FromData(match.ValueData, NSStringEncoding.UTF8);
         return decoded?.ToString();
     }
-
-
-    // public string? GetPassword(string package, string service, string user)
-    // {
-    //     using var query = new SecRecord(SecKind.GenericPassword)
-    //     {
-    //         Service = BuildService(package, service),
-    //         Account = user
-    //     };
-    //
-    //     var match = SecKeyChain.QueryAsRecord(query, out SecStatusCode code);
-    //     if (code == SecStatusCode.ItemNotFound) return null;
-    //     if (code != SecStatusCode.Success || match == null) return null;
-    //
-    //     try
-    //     {
-    //         return match.ValueData?.ToString();
-    //     }
-    //     finally
-    //     {
-    //         match.Dispose();
-    //     }
-    // }
 
     public bool DeletePassword(string package, string service, string user)
     {
