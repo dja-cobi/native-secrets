@@ -4,7 +4,8 @@ using NativeSecrets.Abstractions;
 
 namespace NativeSecrets.Platforms;
 
-internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
+/// <summary>Linux libsecret-backed store (Secret Service API).</summary>
+internal sealed unsafe partial class LinuxKeychain : KeychainStoreBase
 {
     private const string LibSecret = "libsecret-1.so.0";
     private const string LibGlib = "libglib-2.0.so.0";
@@ -13,13 +14,10 @@ internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
     private static readonly byte[] CollectionDefault = [.. "default\0"u8];
     private static readonly byte[] ServiceFieldName = [.. "service\0"u8];
     private static readonly byte[] AccountFieldName = [.. "username\0"u8];
-
-    private bool _disposed;
-
-    public bool IsAvailable()
+    
+    /// <inheritdoc />
+    public override bool IsAvailable(TimeSpan? timeout = null)
     {
-        ObjectDisposedException.ThrowIf(_disposed, nameof(LinuxKeychain));
-
         var err = IntPtr.Zero;
         var service = IntPtr.Zero;
 
@@ -36,10 +34,12 @@ internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
         }
     }
 
-    public void SetPassword(string package, string service, string user, string password)
+    /// <inheritdoc />
+    public override void SetPassword(string package, string service, string user, string password)
     {
-        ValidateArguments(package, service, password);
-
+        KeychainGuard.ValidateKey(package, service, user);
+        KeychainGuard.ValidatePassword(password);
+        
         var labelText = string.IsNullOrEmpty(user) ? service : $"{service} ({user})";
 
         using var pkgHandle = Utf8StringHandle.Create(package);
@@ -74,13 +74,14 @@ internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
         }
     }
 
-    public string? GetPassword(string package, string service, string? user)
+    /// <inheritdoc />
+    public override string? GetPassword(string package, string service, string user)
     {
-        ValidateArguments(package, service);
+        KeychainGuard.ValidateKey(package, service, user);
 
         using var pkgHandle = Utf8StringHandle.Create(package);
         using var svcHandle = Utf8StringHandle.Create(service);
-        using var usrHandle = Utf8StringHandle.Create(user ?? string.Empty);
+        using var usrHandle = Utf8StringHandle.Create(user);
 
         var err = IntPtr.Zero;
         var rawPassword = IntPtr.Zero;
@@ -112,13 +113,14 @@ internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
         }
     }
 
-    public bool DeletePassword(string package, string service, string? user)
+    /// <inheritdoc />
+    public override bool DeletePassword(string package, string service, string user)
     {
-        ValidateArguments(package, service);
+        KeychainGuard.ValidateKey(package, service, user);
 
         using var pkgHandle = Utf8StringHandle.Create(package);
         using var svcHandle = Utf8StringHandle.Create(service);
-        using var usrHandle = Utf8StringHandle.Create(user ?? string.Empty);
+        using var usrHandle = Utf8StringHandle.Create(user);
 
         var err = IntPtr.Zero;
         try
@@ -142,21 +144,6 @@ internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
         {
             if (err != IntPtr.Zero) g_error_free(err);
         }
-    }
-
-    public void Dispose()
-    {
-        if (!_disposed) _disposed = true;
-    }
-
-    private static void ValidateArguments(string package, string service, string? password = null)
-    {
-        if (string.IsNullOrWhiteSpace(package))
-            throw new ArgumentException("Package name cannot be null or empty", nameof(package));
-        if (string.IsNullOrWhiteSpace(service))
-            throw new ArgumentException("Service name cannot be null or empty", nameof(service));
-        if (password != null && string.IsNullOrEmpty(password))
-            throw new ArgumentException("Password cannot be empty", nameof(password));
     }
 
     private static SecretSchema MakeSchema(byte* packageName, byte* serviceField, byte* accountField)
@@ -192,7 +179,7 @@ internal sealed unsafe partial class LinuxKeychain : IKeychainStore, IDisposable
         }
     }
 
-    private struct Utf8StringHandle : IDisposable
+    private readonly struct Utf8StringHandle : IDisposable
     {
         public byte[] Buffer { get; }
 

@@ -6,7 +6,8 @@ using NativeSecrets.Internal;
 
 namespace NativeSecrets.Platforms;
 
-internal sealed unsafe partial class WindowsKeychain : IKeychainStore
+/// <summary>Windows Credential Manager-backed store (advapi32.dll).</summary>
+internal sealed unsafe partial class WindowsKeychain : KeychainStoreBase
 {
     private const uint CRED_TYPE_GENERIC = 1;
     private const uint CRED_PERSIST_LOCAL_MACHINE = 2;
@@ -43,10 +44,9 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
 
     [LibraryImport("advapi32.dll", EntryPoint = "CredFree")]
     private static partial void CredFree(void* buffer);
-
-    // private static string BuildTarget(string package, string service, string user) => $"{package}/{service}/{user}";
-
-    public bool IsAvailable()
+    
+    /// <inheritdoc />
+    public override bool IsAvailable(TimeSpan? timeout = null)
     {
         try
         {
@@ -65,8 +65,12 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
         }
     }
 
-    public void SetPassword(string package, string service, string user, string password)
+    /// <inheritdoc />
+    public override void SetPassword(string package, string service, string user, string password)
     {
+        KeychainGuard.ValidateKey(package, service, user);
+        KeychainGuard.ValidatePassword(password);
+        
         var target = KeyBuilder.BuildTarget(package, service, user);
         var blob = Encoding.UTF8.GetBytes(password);
 
@@ -97,8 +101,11 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
         }
     }
 
-    public string? GetPassword(string package, string service, string user)
+    /// <inheritdoc />
+    public override string? GetPassword(string package, string service, string user)
     {
+        KeychainGuard.ValidateKey(package, service, user);
+        
         var target = KeyBuilder.BuildTarget(package, service, user);
         if (!CredReadW(target, CRED_TYPE_GENERIC, 0, out var cred))
         {
@@ -119,8 +126,11 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
         }
     }
 
-    public bool DeletePassword(string package, string service, string user)
+    /// <inheritdoc />
+    public override bool DeletePassword(string package, string service, string user)
     {
+        KeychainGuard.ValidateKey(package, service, user);
+
         var target = KeyBuilder.BuildTarget(package, service, user);
         if (CredDeleteW(target, CRED_TYPE_GENERIC, 0))
             return true;

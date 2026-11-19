@@ -6,7 +6,8 @@ using NativeSecrets.Internal;
 
 namespace NativeSecrets.Platforms;
 
-internal sealed unsafe partial class MacKeychain : IKeychainStore
+/// <summary>macOS Keychain-backed store (Security.framework via P/Invoke).</summary>
+internal sealed unsafe partial class MacKeychain : KeychainStoreBase
 {
     private const string SecurityLib = "/System/Library/Frameworks/Security.framework/Security";
     private const string CoreFoundationLib = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
@@ -27,31 +28,36 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
     private static IntPtr _kCfTypeDictionaryKeyCallBacks;
     private static IntPtr _kCfTypeDictionaryValueCallBacks;
     private static bool _symbolsLoaded;
+    
+    private static readonly Lock SymbolsLock = new();
 
     private static void EnsureSymbolsLoaded()
     {
-        if (_symbolsLoaded) return;
+        lock (SymbolsLock)
+        {
+            if (_symbolsLoaded) return;
+            
+            var sec = NativeLibrary.Load(SecurityLib);
+            var cf = NativeLibrary.Load(CoreFoundationLib);
 
-        var sec = NativeLibrary.Load(SecurityLib);
-        var cf = NativeLibrary.Load(CoreFoundationLib);
+            _kSecClass = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecClass"));
+            _kSecClassGenericPassword = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecClassGenericPassword"));
+            _kSecAttrService = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecAttrService"));
+            _kSecAttrAccount = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecAttrAccount"));
+            _kSecValueData = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecValueData"));
+            _kSecReturnData = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecReturnData"));
+            _kSecMatchLimit = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecMatchLimit"));
+            _kSecMatchLimitOne = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecMatchLimitOne"));
+            _kCfBooleanTrue = Marshal.ReadIntPtr(NativeLibrary.GetExport(cf, "kCFBooleanTrue"));
 
-        _kSecClass = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecClass"));
-        _kSecClassGenericPassword = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecClassGenericPassword"));
-        _kSecAttrService = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecAttrService"));
-        _kSecAttrAccount = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecAttrAccount"));
-        _kSecValueData = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecValueData"));
-        _kSecReturnData = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecReturnData"));
-        _kSecMatchLimit = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecMatchLimit"));
-        _kSecMatchLimitOne = Marshal.ReadIntPtr(NativeLibrary.GetExport(sec, "kSecMatchLimitOne"));
-        _kCfBooleanTrue = Marshal.ReadIntPtr(NativeLibrary.GetExport(cf, "kCFBooleanTrue"));
-
-        _kCfTypeDictionaryKeyCallBacks = NativeLibrary.GetExport(cf, "kCFTypeDictionaryKeyCallBacks");
-        _kCfTypeDictionaryValueCallBacks = NativeLibrary.GetExport(cf, "kCFTypeDictionaryValueCallBacks");
-
-        _symbolsLoaded = true;
+            _kCfTypeDictionaryKeyCallBacks = NativeLibrary.GetExport(cf, "kCFTypeDictionaryKeyCallBacks");
+            _kCfTypeDictionaryValueCallBacks = NativeLibrary.GetExport(cf, "kCFTypeDictionaryValueCallBacks");
+            _symbolsLoaded = true;
+        }
     }
     
-    public bool IsAvailable()
+    /// <inheritdoc />
+    public override bool IsAvailable(TimeSpan? timeout = null)
     {
         try
         {
@@ -76,9 +82,13 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
         }
     }
 
-    public void SetPassword(string package, string service, string user, string password)
+    /// <inheritdoc />
+    public override void SetPassword(string package, string service, string user, string password)
     {
+        KeychainGuard.ValidateKey(package, service, user);
+        KeychainGuard.ValidatePassword(password);
         EnsureSymbolsLoaded();
+
         var svc = KeyBuilder.BuildService(package, service);
         var pwdBytes = Encoding.UTF8.GetBytes(password);
 
@@ -94,6 +104,7 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
             {
                 var updateDict = CfDictionaryCreateMutable(
                     IntPtr.Zero, 1, _kCfTypeDictionaryKeyCallBacks, _kCfTypeDictionaryValueCallBacks);
+                
                 try
                 {
                     CfDictionarySetValue(updateDict, _kSecValueData, valueData);
@@ -124,9 +135,12 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
         }
     }
 
-    public string? GetPassword(string package, string service, string user)
+    /// <inheritdoc />
+    public override string? GetPassword(string package, string service, string user)
     {
+        KeychainGuard.ValidateKey(package, service, user);
         EnsureSymbolsLoaded();
+        
         var svc = KeyBuilder.BuildService(package, service);
         var query = CreateBaseQuery(svc, user);
 
@@ -161,9 +175,12 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
         }
     }
 
-    public bool DeletePassword(string package, string service, string user)
+    /// <inheritdoc />
+    public override bool DeletePassword(string package, string service, string user)
     {
+        KeychainGuard.ValidateKey(package, service, user);
         EnsureSymbolsLoaded();
+        
         var svc = KeyBuilder.BuildService(package, service);
         var query = CreateBaseQuery(svc, user);
 
@@ -183,8 +200,7 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
 
     private static IntPtr CreateBaseQuery(string service, string account)
     {
-        var dict = CfDictionaryCreateMutable(
-            IntPtr.Zero, 4, _kCfTypeDictionaryKeyCallBacks, _kCfTypeDictionaryValueCallBacks);
+        var dict = CfDictionaryCreateMutable( IntPtr.Zero, 4, _kCfTypeDictionaryKeyCallBacks, _kCfTypeDictionaryValueCallBacks);
         var cfService = CreateCfString(service);
         var cfAccount = CreateCfString(account);
 
@@ -214,6 +230,12 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
 
     private static IntPtr CreateCfData(byte[] data)
     {
+        if (data.Length == 0)
+        {
+            var empty = CfDataCreate(IntPtr.Zero, null, 0);
+            return empty == IntPtr.Zero ? throw new OutOfMemoryException("CFDataCreate failed.") : empty;
+        }
+        
         fixed (byte* ptr = data)
         {
             var cfData = CfDataCreate(IntPtr.Zero, ptr, data.Length);

@@ -1,14 +1,15 @@
 using NativeSecrets.Abstractions;
-#if !NETSTANDARD2_0
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-#endif
 
 namespace NativeSecrets.Core;
 
-#if !NETSTANDARD2_0
+/// <summary>DI registration helpers.</summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers a singleton <see cref="IKeychainStore"/> using <see cref="KeychainFactory.CreateProvider"/>.
+    /// </summary>
     public static IServiceCollection AddNativeSecrets(this IServiceCollection services,
         Action<KeychainOptions>? configure = null)
     {
@@ -19,4 +20,3 @@ public static class ServiceCollectionExtensions
         return services;
     } 
 }
-#endif

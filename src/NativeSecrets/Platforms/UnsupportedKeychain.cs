@@ -2,10 +2,19 @@ using NativeSecrets.Abstractions;
 
 namespace NativeSecrets.Platforms;
 
-internal sealed class UnsupportedKeychain : IKeychainStore
+/// <summary>No-op store for unsupported platforms.</summary>
+internal sealed class UnsupportedKeychain : KeychainStoreBase
 {
-    public bool IsAvailable() => false;
-    public void SetPassword(string package, string service, string user, string password) => throw new PlatformNotSupportedException();
-    public string? GetPassword(string package, string service, string user) => null;
-    public bool DeletePassword(string package, string service, string user) => false;
+    /// <inheritdoc />
+    public override bool IsAvailable(TimeSpan? timeout = null) => false;
+
+    /// <inheritdoc />
+    public override void SetPassword(string package, string service, string user, string password)
+        => throw new PlatformNotSupportedException();
+
+    /// <inheritdoc />
+    public override string? GetPassword(string package, string service, string user) => null;
+
+    /// <inheritdoc />
+    public override bool DeletePassword(string package, string service, string user) => false;
 }
