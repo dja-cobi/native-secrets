@@ -1,0 +1,40 @@
+name: Build NuGet Package
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой в интерфейсе GitHub
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Нужно для Source Link
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Android & Apple workloads
+        run: dotnet workload install android ios maccatalyst
+
+      - name: Restore dependencies
+        run: dotnet restore src/NativeSecrets/NativeSecrets.csproj
+
+      - name: Build & Pack NuGet package
+        run: |
+          dotnet pack src/NativeSecrets/NativeSecrets.csproj \
+            -c Release \
+            -o ./artifacts
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NativeSecrets-nupkg
+          path: ./artifacts/*
