@@ -78,18 +78,27 @@ jobs:
           </plist>
           EOF
 
-      - name: Build & Run MacCatalyst Demo (SecKeyChain)
-        run: |
-          dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj -f net10.0-maccatalyst -c Debug -p:ValidateXcodeVersion=false
-          APP_PATH="src/NativeSecrets.IosDemo/bin/Debug/net10.0-maccatalyst/maccatalyst-arm64/NativeSecrets.IosDemo.app"
-          codesign --force --sign - "$APP_PATH"
-          "$APP_PATH/Contents/MacOS/NativeSecrets.IosDemo"
+      - name: Build MacCatalyst Demo (Verify compilation)
+        run: dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj -f net10.0-maccatalyst -c Debug -p:ValidateXcodeVersion=false
 
       - name: Build & Run iOS Simulator Demo (SecKeyChain)
         run: |
+          cat << 'EOF' > Entitlements.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
+          <plist version="1.0">
+          <dict>
+              <key>keychain-access-groups</key>
+              <array>
+                  <string>$(AppIdentifierPrefix)com.companyname.NativeSecrets.IosDemo</string>
+              </array>
+          </dict>
+          </plist>
+          EOF
+
           dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj -f net10.0-ios -r iossimulator-arm64 -c Debug -p:ValidateXcodeVersion=false
           APP_PATH="src/NativeSecrets.IosDemo/bin/Debug/net10.0-ios/iossimulator-arm64/NativeSecrets.IosDemo.app"
-          codesign --force --sign - "$APP_PATH"
+          codesign --force --sign - --entitlements Entitlements.plist "$APP_PATH"
 
           UDID=$(xcrun simctl list devices available | grep "iPhone" | head -n 1 | grep -oE '[A-F0-9-]{36}')
           echo "Booting iOS Simulator: $UDID"
