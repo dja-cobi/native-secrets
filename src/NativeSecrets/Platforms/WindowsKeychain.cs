@@ -1,8 +1,10 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using NativeSecrets.Abstractions;
+using NativeSecrets.Internal;
 
-namespace NativeSecrets;
+namespace NativeSecrets.Platforms;
 
 internal sealed unsafe partial class WindowsKeychain : IKeychainStore
 {
@@ -42,7 +44,7 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
     [LibraryImport("advapi32.dll", EntryPoint = "CredFree")]
     private static partial void CredFree(void* buffer);
 
-    private static string BuildTarget(string package, string service, string user) => $"{package}/{service}/{user}";
+    // private static string BuildTarget(string package, string service, string user) => $"{package}/{service}/{user}";
 
     public bool IsAvailable()
     {
@@ -65,7 +67,7 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
 
     public void SetPassword(string package, string service, string user, string password)
     {
-        var target = BuildTarget(package, service, user);
+        var target = KeyBuilder.BuildTarget(package, service, user);
         var blob = Encoding.UTF8.GetBytes(password);
 
         try
@@ -97,7 +99,7 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
 
     public string? GetPassword(string package, string service, string user)
     {
-        var target = BuildTarget(package, service, user);
+        var target = KeyBuilder.BuildTarget(package, service, user);
         if (!CredReadW(target, CRED_TYPE_GENERIC, 0, out var cred))
         {
             var err = Marshal.GetLastPInvokeError();
@@ -119,7 +121,7 @@ internal sealed unsafe partial class WindowsKeychain : IKeychainStore
 
     public bool DeletePassword(string package, string service, string user)
     {
-        var target = BuildTarget(package, service, user);
+        var target = KeyBuilder.BuildTarget(package, service, user);
         if (CredDeleteW(target, CRED_TYPE_GENERIC, 0))
             return true;
 

@@ -3,6 +3,7 @@ using Android.OS;
 using Android.Util;
 using Android.Widget;
 using NativeSecrets;
+using NativeSecrets.Core;
 
 namespace NativeSecrets.AndroidDemo;
 

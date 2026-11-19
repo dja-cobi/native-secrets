@@ -1,4 +1,5 @@
 ﻿using NativeSecrets;
+using NativeSecrets.Core;
 
 var store = KeychainFactory.Instance;
 Console.WriteLine($"OS: {Environment.OSVersion}");

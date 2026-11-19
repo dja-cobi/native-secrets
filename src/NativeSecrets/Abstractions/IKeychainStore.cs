@@ -1,4 +1,4 @@
-namespace NativeSecrets;
+namespace NativeSecrets.Abstractions;
 
 public interface IKeychainStore
 {

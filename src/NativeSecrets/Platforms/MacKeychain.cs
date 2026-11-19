@@ -1,8 +1,10 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using NativeSecrets.Abstractions;
+using NativeSecrets.Internal;
 
-namespace NativeSecrets;
+namespace NativeSecrets.Platforms;
 
 internal sealed unsafe partial class MacKeychain : IKeychainStore
 {
@@ -48,9 +50,7 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
 
         _symbolsLoaded = true;
     }
-
-    private static string BuildService(string package, string service) => $"{package}/{service}";
-
+    
     public bool IsAvailable()
     {
         try
@@ -79,7 +79,7 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
     public void SetPassword(string package, string service, string user, string password)
     {
         EnsureSymbolsLoaded();
-        var svc = BuildService(package, service);
+        var svc = KeyBuilder.BuildService(package, service);
         var pwdBytes = Encoding.UTF8.GetBytes(password);
 
         var query = CreateBaseQuery(svc, user);
@@ -127,7 +127,7 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
     public string? GetPassword(string package, string service, string user)
     {
         EnsureSymbolsLoaded();
-        var svc = BuildService(package, service);
+        var svc = KeyBuilder.BuildService(package, service);
         var query = CreateBaseQuery(svc, user);
 
         try
@@ -164,7 +164,7 @@ internal sealed unsafe partial class MacKeychain : IKeychainStore
     public bool DeletePassword(string package, string service, string user)
     {
         EnsureSymbolsLoaded();
-        var svc = BuildService(package, service);
+        var svc = KeyBuilder.BuildService(package, service);
         var query = CreateBaseQuery(svc, user);
 
         try
