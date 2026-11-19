@@ -1,4 +1,5 @@
-﻿using NativeSecrets;
+﻿using Microsoft.Extensions.DependencyInjection;
+using NativeSecrets;
 using NativeSecrets.Core;
 
 var store = KeychainFactory.Instance;

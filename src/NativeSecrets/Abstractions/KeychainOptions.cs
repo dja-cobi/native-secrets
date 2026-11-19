@@ -18,5 +18,5 @@ public sealed class KeychainOptions
     public ILogger? Logger { get; init; }
 
     /// <summary>Timeout for <see cref="IKeychainStore.IsAvailable(TimeSpan?)"/>. Defaults to 5 seconds.</summary>
-    public TimeSpan AvailabilityTimeout { get; init; } = TimeSpan.FromSeconds(5);
+    public TimeSpan AvailabilityTimeout { get; set; } = TimeSpan.FromSeconds(5);
 }
