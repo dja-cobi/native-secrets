@@ -85,18 +85,18 @@ jobs:
         run: |
           dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj -f net10.0-ios -r iossimulator-arm64 -c Debug -p:ValidateXcodeVersion=false
           APP_PATH="src/NativeSecrets.IosDemo/bin/Debug/net10.0-ios/iossimulator-arm64/NativeSecrets.IosDemo.app"
-          codesign --force --sign - "$APP_PATH"
 
           UDID=$(xcrun simctl list devices available | grep "iPhone" | head -n 1 | grep -oE '[A-F0-9-]{36}')
           echo "Booting iOS Simulator: $UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
 
-                    xcrun simctl install "$UDID" "$APP_PATH"
+          xcrun simctl install "$UDID" "$APP_PATH"
           xcrun simctl launch "$UDID" com.companyname.NativeSecrets.IosDemo
           sleep 3
           xcrun simctl spawn "$UDID" log show --last 2m --style compact | grep "NativeSecrets.IosDemo" | tee ios_output.log
           grep -q "SUCCESS: Apple SecKeyChain works properly!" ios_output.log
+
 
 
 
