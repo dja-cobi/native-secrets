@@ -9,13 +9,14 @@ public class AppDelegate : UIApplicationDelegate
 {
     public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
     {
+        const string resultFile = "/tmp/ios_test_result.txt";
         try
         {
             var store = KeychainFactory.Instance;
-            Console.WriteLine($"[NativeSecrets.IosDemo] Store: {store.GetType().Name}, Fallback: {KeychainFactory.IsUsingFallback}");
+            var info = $"Store: {store.GetType().Name}, Fallback: {KeychainFactory.IsUsingFallback}";
 
             if (KeychainFactory.IsUsingFallback)
-                throw new InvalidOperationException("Fallback store was used instead of IosKeychain!");
+                throw new InvalidOperationException($"Fallback store was used instead of IosKeychain! ({info})");
 
             const string pkg = "org.nativesecrets.iosdemo";
             const string svc = "ios-test";
@@ -34,15 +35,11 @@ public class AppDelegate : UIApplicationDelegate
             if (store.GetPassword(pkg, svc, usr) != null)
                 throw new InvalidOperationException("Password still exists after deletion");
 
-            Console.WriteLine("[NativeSecrets.IosDemo] SUCCESS: Apple SecKeyChain works properly!");
-            Console.Out.Flush();
-            Environment.Exit(0);
+            File.WriteAllText(resultFile, $"SUCCESS: Apple SecKeyChain works properly! ({info})");
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[NativeSecrets.IosDemo] ERROR: {ex}");
-            Console.Error.Flush();
-            Environment.Exit(1);
+            File.WriteAllText(resultFile, $"ERROR: {ex}");
         }
 
         return true;
