@@ -1,7 +1,7 @@
 # NativeSecrets
 
-[![NuGet](https://shields.io)](https://nuget.org)
-[![License: MIT](https://shields.io)](LICENSE)
+[![NuGet](https://img.shields.io/nuget/v/NativeSecrets.svg)](https://www.nuget.org/packages/NativeSecrets)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **English** | [Русский](docs/README.ru.md)
 
