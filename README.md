@@ -3,9 +3,11 @@
 [![NuGet](https://shields.io)](https://nuget.org)
 [![License: MIT](https://shields.io)](LICENSE)
 
+**English** | [Русский](docs/README.ru.md)
+
 A cross-platform .NET library for storing secrets (tokens, passwords, API keys) in native OS credential stores with automatic fallback to an encrypted local file.
 
-Suitable for any .NET 10 application: CLI tools, background services, ASP.NET Core, Avalonia, .NET MAUI, WPF, and WinForms. Built with zero reflection (`[LibraryImport]`, Source-Generated JSON) and full **Native AOT** and **Trimming** compatibility.
+Suitable for any **.NET 8 / 9 / 10 / 11** application: CLI tools, background services, ASP.NET Core, Avalonia, .NET MAUI, WPF, and WinForms. Built with zero reflection (`[LibraryImport]`, Source-Generated JSON) and full **Native AOT** and **Trimming** compatibility.
 
 ---
 
@@ -25,10 +27,10 @@ On first access, `NativeSecrets` probes the native OS store (`IsAvailable`). If 
 | :--- | :--- | :--- | :--- |
 | **Windows** | Windows 10+ | Windows Credential Manager | `advapi32.dll` (`CredWriteW` / `CredReadW` / `CredDeleteW`, `CRED_TYPE_GENERIC`) |
 | **macOS** | macOS 12+ | Apple Keychain | `Security.framework` + `CoreFoundation` (`kSecClassGenericPassword`) |
-| **iOS / Mac Catalyst** | iOS 15.0+ | iOS Keychain | `Security` (`SecKind.GenericPassword`, `SecAccessible.AfterFirstUnlock`) |
+| **iOS / Mac Catalyst** | iOS 15.0+ (.NET 10/11) | iOS Keychain | `Security` (`SecKind.GenericPassword`, `SecAccessible.AfterFirstUnlock`) |
 | **Linux** | Any with `libsecret` | Secret Service API (D-Bus) | `libsecret-1.so.0` (GNOME Keyring / KWallet) |
-| **Android** | Android 6.0 (API 23+) | Android Keystore | AES-256-GCM key in `AndroidKeyStore` + private `SharedPreferences` |
-| **Fallback (all OS)** | .NET 10 | Encrypted file `secrets.bin` | AES-256-GCM; key derived via PBKDF2-SHA256 (200,000 iterations) bound to machine, user, and device ID |
+| **Android** | Android 6.0 / API 23+ (.NET 10)<br>Android 7.0 / API 24+ (.NET 11) | Android Keystore | RSA-2048 wrapping key in `AndroidKeyStore` + AES-256-GCM encrypted payload in private `SharedPreferences` |
+| **Fallback (all OS)** | .NET 8 / 9 / 10 / 11 | Encrypted file `secrets.bin` | AES-256-GCM; key derived via PBKDF2-SHA256 (200,000 iterations) bound to machine, user, and device ID |
 
 ---
 
