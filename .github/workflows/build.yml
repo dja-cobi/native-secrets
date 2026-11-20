@@ -1,13 +1,73 @@
-name: Build NuGet Package
+name: Build, Test & Pack NuGet
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой в интерфейсе GitHub
+  workflow_dispatch:
 
 jobs:
-  build:
+  test:
+    name: Test on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: "--require-native"
+          - os: macos-latest
+            args: "--require-native"
+          - os: ubuntu-latest
+            args: "" # На headless Ubuntu без D-Bus проверяем работу fallback
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8, 9, 10 & 11
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+            11.0.x
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Run desktop smoke test
+        run: dotnet run --project src/NativeSecrets.Demo/NativeSecrets.Demo.csproj -c Release -- ${{ matrix.args }}
+
+      - name: Install Apple workloads (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: dotnet workload install ios maccatalyst
+
+      - name: Run iOS Simulator smoke test (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj \
+            -c Release \
+            -f net10.0-ios \
+            -r iossimulator-arm64 \
+            -p:EnableCodeSigning=false
+
+          SIM_UDID=$(xcrun simctl list devices available "iPhone" -j | jq -r '[.devices[] | .[] | select(.isAvailable==true)] | first | .udid')
+          echo "Booting iOS Simulator: $SIM_UDID"
+          xcrun simctl boot "$SIM_UDID"
+
+          APP_PATH=$(find src/NativeSecrets.IosDemo/bin/Release/net10.0-ios -name "NativeSecrets.IosDemo.app" | head -n 1)
+          xcrun simctl install "$SIM_UDID" "$APP_PATH"
+
+          OUTPUT=$(xcrun simctl launch --console-pty "$SIM_UDID" com.companyname.NativeSecrets.IosDemo)
+          echo "$OUTPUT"
+          echo "$OUTPUT" | grep -q "\[NativeSecrets.IosDemo\] SUCCESS: Apple SecKeyChain works properly!"
+
+  pack:
+    name: Pack NuGet on macOS
+    needs: test
     runs-on: macos-latest
 
     steps:
@@ -16,16 +76,17 @@ jobs:
         with:
           fetch-depth: 0 # Нужно для Source Link
 
-      - name: Setup .NET 10
+      - name: Setup .NET 8, 9, 10 & 11
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+            11.0.x
 
       - name: Install Android & Apple workloads
         run: dotnet workload install android ios maccatalyst
-
-      - name: Restore dependencies
-        run: dotnet restore src/NativeSecrets/NativeSecrets.csproj
 
       - name: Build & Pack NuGet package
         run: |
