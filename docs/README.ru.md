@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="../icon.png" alt="NativeSecrets Logo" width="100" height="100" />
+  <img src="../ng.png" alt="NativeSecrets Logo" width="100" height="100" />
   <h1>NativeSecrets</h1>
   <p>
     <a href="https://www.nuget.org/packages/NativeSecrets"><img src="https://img.shields.io/nuget/v/NativeSecrets" alt="NuGet" /></a>
