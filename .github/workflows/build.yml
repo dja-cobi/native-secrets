@@ -57,13 +57,21 @@ jobs:
           SIM_UDID=$(xcrun simctl list devices available "iPhone" -j | jq -r '[.devices[] | .[] | select(.isAvailable==true)] | first | .udid')
           echo "Booting iOS Simulator: $SIM_UDID"
           xcrun simctl boot "$SIM_UDID"
+          xcrun simctl bootstatus "$SIM_UDID" -b
 
           APP_PATH=$(find src/NativeSecrets.IosDemo/bin/Release/net10.0-ios -name "NativeSecrets.IosDemo.app" | head -n 1)
           xcrun simctl install "$SIM_UDID" "$APP_PATH"
 
-          OUTPUT=$(xcrun simctl launch --console-pty "$SIM_UDID" com.companyname.NativeSecrets.IosDemo)
+          OUTPUT=$(xcrun simctl launch --console-pty "$SIM_UDID" com.companyname.NativeSecrets.IosDemo 2>&1 || true)
+          echo "=== APP OUTPUT ==="
           echo "$OUTPUT"
-          echo "$OUTPUT" | grep -q "\[NativeSecrets.IosDemo\] SUCCESS: Apple SecKeyChain works properly!"
+
+          if ! echo "$OUTPUT" | grep -q "SUCCESS: Apple SecKeyChain works properly!"; then
+            echo "=== SIMULATOR LOGS ==="
+            xcrun simctl spawn "$SIM_UDID" log show --last 2m --style compact --predicate 'process == "NativeSecrets.IosDemo"' || true
+            exit 1
+          fi
+
 
   pack:
     name: Pack NuGet on macOS
