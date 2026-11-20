@@ -1,11 +1,17 @@
-# NativeSecrets
-
-[![NuGet](https://img.shields.io/nuget/v/NativeSecrets.svg)](https://www.nuget.org/packages/NativeSecrets)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-**English** | [Русский](docs/README.ru.md)
+<div align="center">
+  <img src="ns.png" alt="NativeSecrets Logo" width="100" height="100" />
+  <h1>NativeSecrets</h1>
+  <p>
+    <a href="https://www.nuget.org/packages/NativeSecrets"><img src="https://img.shields.io/nuget/v/NativeSecrets" alt="NuGet" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="License: MIT" /></a>
+  </p>
+  <p>
+    <strong>English</strong> | <a href="docs/README.ru.md">Русский</a>
+  </p>
+</div>
 
 A cross-platform .NET library for storing secrets (tokens, passwords, API keys) in native OS credential stores with automatic fallback to an encrypted local file.
+
 
 Suitable for any **.NET 8 / 9 / 10 / 11** application: CLI tools, background services, ASP.NET Core, Avalonia, .NET MAUI, WPF, and WinForms. Built with zero reflection (`[LibraryImport]`, Source-Generated JSON) and full **Native AOT** and **Trimming** compatibility.
 
