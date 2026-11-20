@@ -1,9 +1,14 @@
-# NativeSecrets
-
-[![NuGet](https://img.shields.io/nuget/v/NativeSecrets.svg)](https://www.nuget.org/packages/NativeSecrets)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
-
-[English](../README.md) | **Русский**
+<div align="center">
+  <img src="../icon.png" alt="NativeSecrets Logo" width="100" height="100" />
+  <h1>NativeSecrets</h1>
+  <p>
+    <a href="https://www.nuget.org/packages/NativeSecrets"><img src="https://img.shields.io/nuget/v/NativeSecrets" alt="NuGet" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="License: MIT" /></a>
+  </p>
+  <p>
+    <a href="../README.md">English</a> | <strong>Русский</strong>
+  </p>
+</div>
 
 Кроссплатформенная .NET-библиотека для хранения секретов (токенов, паролей, API-ключей) в нативных системных хранилищах ОС с автоматическим откатом (fallback) на локальный зашифрованный файл.
 
