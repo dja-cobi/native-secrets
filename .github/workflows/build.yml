@@ -53,8 +53,7 @@ jobs:
           dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj \
             -c Release \
             -f net10.0-ios \
-            -r iossimulator-arm64 \
-            -p:EnableCodeSigning=false
+            -r iossimulator-arm64
 
           SIM_UDID=$(xcrun simctl list devices available "iPhone" -j | jq -r '[.devices[] | .[] | select(.isAvailable==true)] | first | .udid')
           echo "Booting iOS Simulator: $SIM_UDID"
@@ -62,6 +61,7 @@ jobs:
           xcrun simctl bootstatus "$SIM_UDID" -b
 
           APP_PATH=$(find src/NativeSecrets.IosDemo/bin/Release/net10.0-ios -name "NativeSecrets.IosDemo.app" | head -n 1)
+          codesign --force --deep --sign - --entitlements src/NativeSecrets.IosDemo/Entitlements.plist "$APP_PATH"
           xcrun simctl install "$SIM_UDID" "$APP_PATH"
           xcrun simctl launch "$SIM_UDID" com.companyname.NativeSecrets.IosDemo
 
@@ -72,7 +72,6 @@ jobs:
 
           if [ ! -f /tmp/ios_test_result.txt ]; then
             echo "=== CRASH REPORTS ==="
-            ls -la ~/Library/Logs/DiagnosticReports/ || true
             cat ~/Library/Logs/DiagnosticReports/NativeSecrets.IosDemo* 2>/dev/null | head -n 80 || true
             exit 1
           fi
@@ -81,8 +80,6 @@ jobs:
           echo "=== IOS TEST RESULT ==="
           echo "$RESULT"
           echo "$RESULT" | grep -q "^SUCCESS:"
-
-
   pack:
     name: Pack NuGet on macOS
     needs: test
