@@ -48,6 +48,8 @@ jobs:
       - name: Run iOS Simulator smoke test (macOS only)
         if: matrix.os == 'macos-latest'
         run: |
+          rm -f /tmp/ios_test_result.txt
+
           dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj \
             -c Release \
             -f net10.0-ios \
@@ -60,18 +62,25 @@ jobs:
           xcrun simctl bootstatus "$SIM_UDID" -b
 
           APP_PATH=$(find src/NativeSecrets.IosDemo/bin/Release/net10.0-ios -name "NativeSecrets.IosDemo.app" | head -n 1)
+          codesign --force --deep --sign - --entitlements src/NativeSecrets.IosDemo/Entitlements.plist "$APP_PATH"
           xcrun simctl install "$SIM_UDID" "$APP_PATH"
+          xcrun simctl launch "$SIM_UDID" com.companyname.NativeSecrets.IosDemo
 
-          OUTPUT=$(xcrun simctl launch --console-pty "$SIM_UDID" com.companyname.NativeSecrets.IosDemo 2>&1 || true)
-          echo "=== APP OUTPUT ==="
-          echo "$OUTPUT"
+          for i in {1..15}; do
+            if [ -f /tmp/ios_test_result.txt ]; then break; fi
+            sleep 1
+          done
 
-          if ! echo "$OUTPUT" | grep -q "SUCCESS: Apple SecKeyChain works properly!"; then
-            echo "=== SIMULATOR LOGS ==="
-            xcrun simctl spawn "$SIM_UDID" log show --last 2m --style compact --predicate 'process == "NativeSecrets.IosDemo"' || true
+          if [ ! -f /tmp/ios_test_result.txt ]; then
+            echo "=== CRASH REPORTS ==="
+            cat ~/Library/Logs/DiagnosticReports/NativeSecrets.IosDemo* 2>/dev/null | head -n 80 || true
             exit 1
           fi
 
+          RESULT=$(cat /tmp/ios_test_result.txt)
+          echo "=== IOS TEST RESULT ==="
+          echo "$RESULT"
+          echo "$RESULT" | grep -q "^SUCCESS:"
 
   pack:
     name: Pack NuGet on macOS
