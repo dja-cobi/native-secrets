@@ -38,12 +38,12 @@ jobs:
       - name: Install Android workload
         run: dotnet workload install android
 
-      - name: Run desktop smoke test
-        run: dotnet run --project src/NativeSecrets.Demo/NativeSecrets.Demo.csproj -c Release -- ${{ matrix.args }}
-
       - name: Install Apple workloads (macOS only)
         if: matrix.os == 'macos-latest'
         run: dotnet workload install ios maccatalyst
+
+      - name: Run desktop smoke test
+        run: dotnet run --project src/NativeSecrets.Demo/NativeSecrets.Demo.csproj -c Release -- ${{ matrix.args }}
 
       - name: Run iOS Simulator smoke test (macOS only)
         if: matrix.os == 'macos-latest'
