@@ -3,7 +3,7 @@
 [![NuGet](https://shields.io)](https://nuget.org)
 [![License: MIT](https://shields.io)](LICENSE)
 
-[English](README.md) | **Русский**
+[English](../README.md) | **Русский**
 
 Кроссплатформенная .NET-библиотека для хранения секретов (токенов, паролей, API-ключей) в нативных системных хранилищах ОС с автоматическим откатом (fallback) на локальный зашифрованный файл.
 
@@ -176,4 +176,4 @@ provider.SetPassword("com.example.Service", "Broker", "", "amqps://...");
 
 ## Лицензия
 
-[MIT](LICENSE)
+[MIT](../LICENSE)
