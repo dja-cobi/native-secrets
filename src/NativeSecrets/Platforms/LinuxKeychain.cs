@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using NativeSecrets.Abstractions;
 
@@ -196,7 +197,11 @@ internal sealed unsafe partial class LinuxKeychain : KeychainStoreBase
             return new Utf8StringHandle(buffer);
         }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+            if (Buffer is {Length: > 0}) 
+                CryptographicOperations.ZeroMemory(Buffer);
+        }
     }
 
     [LibraryImport(LibSecret)]

@@ -21,7 +21,7 @@ internal sealed class EncryptedFileFallbackStore : KeychainStoreBase
 
     private readonly string _filePath;
     private readonly byte[] _key;
-    private readonly Lock _lock = new();
+    private readonly object _lock = new();
 
     /// <summary>Creates a fallback store.</summary>
     /// <param name="directory">Directory for <c>secrets.bin</c>. Defaults to <c>%APPDATA%/NativeSecrets</c>.</param>

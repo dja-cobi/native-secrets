@@ -2,7 +2,6 @@ using Android.App;
 using Android.OS;
 using Android.Util;
 using Android.Widget;
-using NativeSecrets;
 using NativeSecrets.Core;
 
 namespace NativeSecrets.AndroidDemo;
@@ -10,54 +9,64 @@ namespace NativeSecrets.AndroidDemo;
 [Activity(Label = "@string/app_name", MainLauncher = true)]
 public class MainActivity : Activity
 {
+    private const string Pkg = "org.nativesecrets.demo";
+    private const string Svc = "persist-test";
+    private const string Usr = "djacobi";
+    private const string SecretValue = "Saved_Across_Restarts_2026!";
+
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
 
-        var textView = new TextView(this)
+        var layout = new LinearLayout(this)
         {
-            TextSize = 18f
+            Orientation = Orientation.Vertical
         };
-        textView.SetPadding(40, 80, 40, 40);
-        SetContentView(textView);
+        layout.SetPadding(48, 200, 48, 48);
+
+        var statusView = new TextView(this) { TextSize = 18f };
+        var resetButton = new Button(this) { Text = "Удалить секрет (сбросить тест)" };
+
+        layout.AddView(statusView);
+        layout.AddView(resetButton);
+        SetContentView(layout);
 
         try
         {
             var store = KeychainFactory.Instance;
-            bool requireNative = Intent?.GetBooleanExtra("require_native", false) ?? false;
+            var isFallback = KeychainFactory.IsUsingFallback;
 
-            Log.Info("NativeSecrets", $"Store: {store.GetType().Name}, Fallback: {KeychainFactory.IsUsingFallback}, RequireNative: {requireNative}");
+            resetButton.Click += (_, _) =>
+            {
+                var deleted = store.DeletePassword(Pkg, Svc, Usr);
+                statusView.Text = $"Fallback: {isFallback}\nСекрет удалён: {deleted}.\nПерезапусти приложение для нового теста.";
+            };
 
-            if (requireNative && KeychainFactory.IsUsingFallback)
-                throw new InvalidOperationException("Fallback store was used instead of AndroidKeychain!");
+            var existing = store.GetPassword(Pkg, Svc, Usr);
 
-            const string pkg = "org.nativesecrets.demo";
-            const string svc = "android-test";
-            const string usr = "djacobi";
-            const string secret = "Android_KeyStore_Secret_123!";
-
-            store.SetPassword(pkg, svc, usr, secret);
-            var loaded = store.GetPassword(pkg, svc, usr);
-
-            if (loaded != secret)
-                throw new InvalidOperationException($"Expected '{secret}', got '{loaded ?? "null"}'");
-
-            if (!store.DeletePassword(pkg, svc, usr))
-                throw new InvalidOperationException("Failed to delete password");
-
-            if (store.GetPassword(pkg, svc, usr) != null)
-                throw new InvalidOperationException("Password still exists after deletion");
-
-            const string okMsg = "SUCCESS: Secret storage works properly!";
-            Log.Info("NativeSecrets", okMsg);
-            textView.Text = $"Store: {store.GetType().Name}\nFallback: {KeychainFactory.IsUsingFallback}\n\n{okMsg}";
+            if (existing == null)
+            {
+                store.SetPassword(Pkg, Svc, Usr, SecretValue);
+                string msg = $"Fallback: {isFallback}\n\nШАГ 1: Пароль сохранён!\nЗакрой приложение (смахни из недавних) и запусти снова.";
+                Log.Info("NativeSecrets", msg);
+                statusView.Text = msg;
+            }
+            else if (existing == SecretValue)
+            {
+                string msg = $"Fallback: {isFallback}\n\nШАГ 2 (УСПЕХ): Пароль прочитан после перезапуска!\nЗначение: {existing}";
+                Log.Info("NativeSecrets", msg);
+                statusView.Text = msg;
+            }
+            else
+            {
+                statusView.Text = $"ОШИБКА: Ожидалось '{SecretValue}', получено '{existing}'";
+            }
         }
         catch (Exception ex)
         {
             Log.Error("NativeSecrets", ex.ToString());
-            textView.TextSize = 12f;
-            textView.Text = $"ERROR:\n{ex}";
+            statusView.TextSize = 13f;
+            statusView.Text = $"ERROR:\n{ex}";
         }
     }
 }
-

@@ -35,7 +35,7 @@ public static class KeychainFactory
             try
             {
                 var native = GetPlatformStore();
-                if (native.IsAvailable(options.AvailabilityTimeout))
+                if (ProbeStore(native, options.AvailabilityTimeout, logger))
                 {
                     logger?.LogInformation("Using native keychain store: {Store}.", native.GetType().Name);
                     return new KeychainStoreProvider(native, usingFallback: false, logger);
@@ -53,6 +53,22 @@ public static class KeychainFactory
         return new KeychainStoreProvider(fallback, usingFallback: true, logger);
     }
 
+    private static bool ProbeStore(IKeychainStore native, TimeSpan timeout, ILogger? logger)
+    {
+        if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
+            return native.IsAvailable(timeout);
+
+        try
+        {
+            return Task.Run(() => native.IsAvailable(timeout)).WaitAsync(timeout).GetAwaiter().GetResult();
+        }
+        catch (TimeoutException)
+        {
+            logger?.LogWarning("Native keychain store {Store} timed out after {Timeout}.", native.GetType().Name, timeout);
+            return false;
+        }
+    }
+    
     private static IKeychainStore GetPlatformStore()
     {
 #if IOS || __IOS__ || MACCATALYST || __MACCATALYST__
@@ -73,51 +89,3 @@ public static class KeychainFactory
 #endif
     }
 }
-
-// using NativeSecrets.Abstractions;
-// using NativeSecrets.Fallback;
-// using NativeSecrets.Platforms;
-//
-// namespace NativeSecrets.Core;
-//
-// public static class KeychainFactory
-// {
-//     private static readonly Lazy<KeychainStoreProvider> _instance = new(CreateProvider, LazyThreadSafetyMode.ExecutionAndPublication);
-//     public static IKeychainStore Instance => _instance.Value;
-//     public static bool IsUsingFallback => _instance.Value.IsUsingFallback;
-//
-//     public static KeychainStoreProvider CreateProvider(KeychainOptions? options = null)
-//     {
-//         options ??= new KeychainOptions();
-//
-//         if (!options.ForceFallback)
-//         {
-//             var native = GetPlatformStore();
-//             if (native.IsAvailable())
-//                 return new KeychainStoreProvider(native, usingFallback:false);
-//         }
-//         
-//         var fallback = options.FallbackStore ?? new EncryptedFileFallbackStore(options.FallbackDirectory);
-//         return new KeychainStoreProvider(fallback, usingFallback: true);
-//     }
-//
-//     private static IKeychainStore GetPlatformStore()
-//     {
-// #if IOS || __IOS__ || MACCATALYST || __MACCATALYST__
-//         return new IosKeychain();
-// #elif ANDROID || __ANDROID__
-//         return new AndroidKeychain();
-// #else
-//         if (OperatingSystem.IsWindows())
-//             return new Platforms.WindowsKeychain();
-//
-//         if (OperatingSystem.IsMacOS())
-//             return new Platforms.MacKeychain();
-//
-//         if (OperatingSystem.IsLinux())
-//             return new Platforms.LinuxKeychain();
-//
-//         return new UnsupportedKeychain();
-// #endif
-//     }
-// }

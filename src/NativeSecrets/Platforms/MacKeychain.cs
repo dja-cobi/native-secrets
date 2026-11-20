@@ -29,7 +29,7 @@ internal sealed unsafe partial class MacKeychain : KeychainStoreBase
     private static IntPtr _kCfTypeDictionaryValueCallBacks;
     private static bool _symbolsLoaded;
     
-    private static readonly Lock SymbolsLock = new();
+    private static readonly object SymbolsLock = new();
 
     private static void EnsureSymbolsLoaded()
     {
