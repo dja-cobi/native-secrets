@@ -3,7 +3,7 @@
 [![NuGet](https://shields.io)](https://nuget.org)
 [![License: MIT](https://shields.io)](LICENSE)
 
-**English** | [Русский](README.ru.md)
+**English** | [Русский](docs/README.ru.md
 
 A cross-platform .NET library for storing secrets (tokens, passwords, API keys) in native OS credential stores with automatic fallback to an encrypted local file.
 
