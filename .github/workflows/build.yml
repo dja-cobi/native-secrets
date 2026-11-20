@@ -53,7 +53,8 @@ jobs:
           dotnet build src/NativeSecrets.IosDemo/NativeSecrets.IosDemo.csproj \
             -c Release \
             -f net10.0-ios \
-            -r iossimulator-arm64
+            -r iossimulator-arm64 \
+            -p:EnableCodeSigning=false
 
           SIM_UDID=$(xcrun simctl list devices available "iPhone" -j | jq -r '[.devices[] | .[] | select(.isAvailable==true)] | first | .udid')
           echo "Booting iOS Simulator: $SIM_UDID"
@@ -80,6 +81,7 @@ jobs:
           echo "=== IOS TEST RESULT ==="
           echo "$RESULT"
           echo "$RESULT" | grep -q "^SUCCESS:"
+
   pack:
     name: Pack NuGet on macOS
     needs: test
